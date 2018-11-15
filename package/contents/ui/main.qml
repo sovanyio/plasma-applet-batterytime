@@ -56,14 +56,21 @@ Item {
 	readonly property bool hasCumulative: getData('Battery', 'Has Cumulative', false)
 	// readonly property int remainingTime: getData('Battery', 'Remaining msec', 0)
 
-	property string currentBatteryName: 'Battery'
-	property bool currentBatteryIsPowerSuppy: getData(currentBatteryName, 'Is Power Supply', false)
-	property string currentBatteryState: getData(currentBatteryName, 'State', false)
-	property int currentBatteryRemainingTime: getData(currentBatteryName, 'Remaining msec', 0)
-	property int currentBatteryPercent: getData(currentBatteryName, 'Percent', 100)
+	property string cumulativeName: 'Battery'
+	property int cumulativeRemainingTime: getData(cumulativeName, 'Remaining msec', 0)
+
+	property string primaryBatteryName: 'Battery0'
+	property bool primaryBatteryIsPowerSuppy: getData(primaryBatteryName, 'Is Power Supply', false)
+	property string primaryBatteryState: getData(primaryBatteryName, 'State', false)
+	property int primaryBatteryPercent: getData(primaryBatteryName, 'Percent', 100)
 	// Capacity
 	// Vendor
 	// Product
+	property string secondaryBatteryName: 'Battery1'
+	property bool secondaryBatteryIsPowerSuppy: getData(secondaryBatteryName, 'Is Power Supply', false)
+	property string secondaryBatteryState: getData(secondaryBatteryName, 'State', false)
+	property int secondaryBatteryPercent: getData(secondaryBatteryName, 'Percent', 100)
+
 
 	readonly property bool isLidPresent: getData('PowerDevil', 'Is Lid Present', false)
 	readonly property bool triggersLidAction: getData('PowerDevil', 'Triggers Lid Action', false)
@@ -92,36 +99,36 @@ Item {
 		running: widget.testing
 		repeat: true
 		onTriggered: {
-			if (currentBatteryState == "Charging") {
-				currentBatteryPercent += 10
+			if (primaryBatteryState == "Charging") {
+				primaryBatteryPercent += 10
 
-				if (currentBatteryPercent >= 100) {
-					currentBatteryState = "FullyCharged"
+				if (primaryBatteryPercent >= 100) {
+					primaryBatteryState = "FullyCharged"
 				}
-			} else if (currentBatteryState == "FullyCharged") {
-				currentBatteryState = "Discharging"
-			} else if (currentBatteryState == "Discharging") {
-				currentBatteryPercent -= 10
+			} else if (primaryBatteryState == "FullyCharged") {
+				primaryBatteryState = "Discharging"
+			} else if (primaryBatteryState == "Discharging") {
+				primaryBatteryPercent -= 10
 
-				if (currentBatteryPercent <= 0) {
-					currentBatteryState = "Charging"
+				if (primaryBatteryPercent <= 0) {
+					primaryBatteryState = "Charging"
 				}
 			}
-			currentBatteryRemainingTime = currentBatteryPercent * 60 * 1000
-			console.log(currentBatteryState, currentBatteryPercent)
+			cumulativeRemainingTime = primaryBatteryPercent * 60 * 1000
+			console.log(primaryBatteryState, primaryBatteryPercent)
 		}
 	}
 	Component.onCompleted: {
 		if (testing) {
-			currentBatteryState = "Charging"
-			currentBatteryPercent = 80
-			currentBatteryRemainingTime = 80 * 60 * 1000
+			primaryBatteryState = "Charging"
+			primaryBatteryPercent = 80
+			cumulativeRemainingTime = 80 * 60 * 1000
 		}
 	}
 
-	property bool currentBatteryLowPower: currentBatteryPercent <= config.lowBatteryPercent
-	property color currentTextColor: {
-		if (currentBatteryLowPower) {
+	property bool primaryBatteryLowPower: primaryBatteryPercent <= config.lowBatteryPercent
+	property color primaryTextColor: {
+		if (primaryBatteryLowPower) {
 			return config.lowBatteryColor
 		} else {
 			return config.normalColor
@@ -154,7 +161,7 @@ Item {
 			rowSpacing: 0
 
 			property bool useVerticalLayout: plasmoid.formFactor == PlasmaCore.Types.Vertical
-			columns: useVerticalLayout ? 1 : 3
+			columns: useVerticalLayout ? 1 : 6
 
 			Item {
 				id: batteryIconContainer
@@ -169,8 +176,8 @@ Item {
 					width: Math.min(parent.width, 22 * units.devicePixelRatio)
 					height: Math.min(parent.height, 12 * units.devicePixelRatio)
 					anchors.centerIn: parent
-					charging: currentBatteryState == "Charging"
-					charge: currentBatteryPercent
+					charging: primaryBatteryState == "Charging"
+					charge: primaryBatteryPercent
 					normalColor: config.normalColor
 					chargingColor: config.chargingColor
 					lowBatteryColor: config.lowBatteryColor
@@ -186,9 +193,9 @@ Item {
 				anchors.right: gridLayout.useVerticalLayout ? parent.right : undefined
 				// Layout.fillWidth: true
 				text: {
-					if (currentBatteryPercent > 0) {
+					if (primaryBatteryPercent > 0) {
 						// return KCoreAddons.Format.formatDuration(remainingTime, KCoreAddons.FormatTypes.HideSeconds);
-						return '' + currentBatteryPercent + '%'
+						return '' + primaryBatteryPercent + '%'
 					} else {
 						return '100%';
 					}
@@ -198,7 +205,54 @@ Item {
 				fontSizeMode: Text.Fit
 				horizontalAlignment: Text.AlignHCenter
 				verticalAlignment: Text.AlignVCenter
-				color: currentTextColor
+				color: primaryTextColor
+
+				// Rectangle { border.color: "#ff0"; border.width: 1; anchors.fill: parent; color: "transparent"}
+			}
+
+			Item {
+				id: secondaryBatteryIconContainer
+				visible: plasmoid.configuration.showBatteryIcon
+				anchors.left: gridLayout.useVerticalLayout ? parent.left : undefined
+				anchors.right: gridLayout.useVerticalLayout ? parent.right : undefined
+				width: 22 * units.devicePixelRatio
+				height: 12 * units.devicePixelRatio + (gridLayout.useVerticalLayout ? gridLayout.spacing : 0)
+
+				BreezeBatteryIcon {
+					id: batteryTwoIcon
+					width: Math.min(parent.width, 22 * units.devicePixelRatio)
+					height: Math.min(parent.height, 12 * units.devicePixelRatio)
+					anchors.centerIn: parent
+					charging: secondaryBatteryState == "Charging"
+					charge: secondaryBatteryPercent
+					normalColor: config.normalColor
+					chargingColor: config.chargingColor
+					lowBatteryColor: config.lowBatteryColor
+					lowBatteryPercent: plasmoid.configuration.lowBatteryPercent
+				}
+			}
+
+
+			PlasmaComponent.Label {
+				id: secondaryPercentText
+				visible: plasmoid.configuration.showPercentage
+				anchors.left: gridLayout.useVerticalLayout ? parent.left : undefined
+				anchors.right: gridLayout.useVerticalLayout ? parent.right : undefined
+				// Layout.fillWidth: true
+				text: {
+					if (secondaryBatteryPercent > 0) {
+						// return KCoreAddons.Format.formatDuration(remainingTime, KCoreAddons.FormatTypes.HideSeconds);
+						return '' + secondaryBatteryPercent + '%'
+					} else {
+						return '100%';
+					}
+				}
+				font.pointSize: -1
+				font.pixelSize: panelItem.textHeight
+				fontSizeMode: Text.Fit
+				horizontalAlignment: Text.AlignHCenter
+				verticalAlignment: Text.AlignVCenter
+				color: primaryTextColor
 
 				// Rectangle { border.color: "#ff0"; border.width: 1; anchors.fill: parent; color: "transparent"}
 			}
@@ -209,14 +263,14 @@ Item {
 				anchors.left: gridLayout.useVerticalLayout ? parent.left : undefined
 				anchors.right: gridLayout.useVerticalLayout ? parent.right : undefined
 				text: {
-					if (currentBatteryRemainingTime > 0) {
+					if (cumulativeRemainingTime > 0) {
 						if (plasmoid.configuration.timeLeftFormat == '69m') {
-							return '' + Math.floor(currentBatteryRemainingTime / (60 * 1000)) + 'm'
+							return '' + Math.floor(cumulativeRemainingTime / (60 * 1000)) + 'm'
 						} else { // Empty string
-							return KCoreAddons.Format.formatDuration(currentBatteryRemainingTime, KCoreAddons.FormatTypes.HideSeconds)
+							return KCoreAddons.Format.formatDuration(cumulativeRemainingTime, KCoreAddons.FormatTypes.HideSeconds)
 						}
 					} else {
-						return '∞';
+						return '';
 					}
 				}
 				font.pointSize: -1
@@ -224,12 +278,12 @@ Item {
 				fontSizeMode: Text.Fit
 				horizontalAlignment: Text.AlignHCenter
 				verticalAlignment: Text.AlignVCenter
-				color: currentTextColor
+				color: primaryTextColor
 
 				// Rectangle { border.color: "#f00"; border.width: 1; anchors.fill: parent; color: "transparent"}
 			}
 		}
 	}
 
-	
+
 }
